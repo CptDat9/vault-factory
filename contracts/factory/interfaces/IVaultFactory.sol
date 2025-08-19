@@ -31,6 +31,7 @@ interface IVaultFactory {
     event Rebalanced(address indexed vault, address strategy);
     event StrategyAdded(address indexed vault, address indexed strategy, bool addToQueue);
     event MaxDebtSet(address indexed vault, address strategy, uint256 newMaxDebt);
+    event VaultsRebalanced(address indexed fromVault, address indexed toVault, uint256 amount);
 
     // View Functions
     function allVaults(uint256 index) external view returns (address vault);
@@ -51,4 +52,5 @@ interface IVaultFactory {
         address strategy,
         uint256 newMaxDebt
     ) external;
+    function rebalanceBetweenVaults(address fromVault, address toVault, uint256 targetDebt) external;
 }
