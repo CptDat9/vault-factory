@@ -6,15 +6,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy, get } = deployments;
   const { deployer, agent } = await getNamedAccounts();
 
-  let vault = await get("Vault").catch(() => null);
-  let usdc = await get("USDC").catch(() => null);
+  let vault = await get("Vault");
 
-  if (!vault || !usdc) {
-    throw new Error("Vault hoặc USDC chưa được deploy, vui lòng deploy trước!");
-  }
-  if (!agent) {
-    throw new Error("Agent account chưa được cấu hình trong hardhat.config.ts");
-  }
+  let usdc = await get("USDC");
 
   await deploy("MockStrategy", {
     contract: "MockStrategy",
@@ -26,14 +20,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       execute: {
         init: {
           methodName: "initialize",
-          args: [
-            vault.address,
-            deployer,
-            agent,
-            usdc.address,
-            "LP Vault",
-            "LP",
-          ],
+          args: [vault.address, deployer, agent, usdc.address, "LP Vault", "LP"],
         },
       },
     },

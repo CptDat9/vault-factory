@@ -1,145 +1,137 @@
+
 import { ethers, deployments, getNamedAccounts } from "hardhat";
 import { VaultFactory__factory, Vault__factory, ERC20Mintable__factory, MockStrategy__factory } from "../typechain-types";
-
+import { parseUnits, formatUnits } from "ethers";
 async function main() {
-  const { deployer } = await getNamedAccounts();
-  const signer = await ethers.getSigner(deployer);
-  console.log("Deployer address:", deployer);
-  const vaultFactoryDeployment = await deployments.get("VaultFactory");
-  const vaultFactory = VaultFactory__factory.connect(vaultFactoryDeployment.address, signer);
-  console.log("VaultFactory deployed at:", vaultFactoryDeployment.address);
-  const usdcDeployment = await deployments.get("USDC");
-  const usdc = ERC20Mintable__factory.connect(usdcDeployment.address, signer);
-  console.log("USDC deployed at:", usdcDeployment.address);
-  const MockStrategyFactory = await ethers.getContractFactory("MockStrategy", signer);
-  const strategy = await MockStrategyFactory.deploy();
-  await strategy.waitForDeployment();
-  const strategyAddress = await strategy.getAddress();
-  console.log("MockStrategy deployed at:", strategyAddress);
-  await strategy.initialize(
-    vaultFactoryDeployment.address,
-    deployer,
-    deployer,
-    usdcDeployment.address,
-    "Test Strategy",
-    "TSTR"
-  );
-  console.log("MockStrategy initialized with vaultFactory:", vaultFactoryDeployment.address);
-  const allVaults = await vaultFactory.listAllVaults();
-  console.log("All existing vaults:", allVaults);
-  if (allVaults.length > 0) {
-    const vaultAddress = allVaults[0];
-    const vault = Vault__factory.connect(vaultAddress, signer);
-    console.log("Interacting with existing vault:", vaultAddress);
-    const amount = ethers.parseUnits("1000", 6);
-    await usdc.mint(deployer, amount);
-    console.log(`Minted ${ethers.formatUnits(amount, 6)} USDC to deployer`);
-    await usdc.approve(vaultAddress, amount);
-    console.log(`Approved ${ethers.formatUnits(amount, 6)} USDC for vault`);
-    await vault.deposit(amount, deployer);
-    console.log(`Deposited ${ethers.formatUnits(amount, 6)} USDC to vault`);
-    const vaultBalance = await vault.balanceOf(deployer);
-    console.log(`Vault balance of deployer: ${ethers.formatUnits(vaultBalance, 6)} vault tokens`);
-  }
-  console.log("Creating new vault...");
-  const vaultParams = {
-    poolId: 2,
-    asset: usdcDeployment.address,
-    tokenName: "New Vault",
-    tokenSymbol: "NVLT",
-    profitMaxUnlockTime: 7 * 24 * 60 * 60,
-    governance: deployer,
-    initialStrategies: [{ strategy: strategyAddress, addToQueue: true }],
-  };
-
-  const tx = await vaultFactory.createVault(vaultParams);
-  const receipt = await tx.wait();
-  const vaultCreatedEvent = receipt.logs
-    .map((log) => {
-      try {
-        return vaultFactory.interface.parseLog(log);
-      } catch {
-        return null;
-      }
-    })
-    .find((log) => log?.name === "VaultCreated");
-
-  if (vaultCreatedEvent) {
+  try {
+    const { deployer } = await getNamedAccounts();
+    const signer = await ethers.getSigner(deployer);
+    console.log("Địa chỉ Deployer:", deployer);
+    const vaultFactoryDeployment = await deployments.get("VaultFactory");
+    const vaultFactory = VaultFactory__factory.connect(vaultFactoryDeployment.address, signer);
+    console.log("Địa chỉ VaultFactory:", vaultFactoryDeployment.address);
+    console.log("Vault implementation:", await vaultFactory.vaultImplementation());
+    const usdcDeployment = await deployments.get("USDC");
+    const usdc = ERC20Mintable__factory.connect(usdcDeployment.address, signer);
+    console.log("Địa chỉ USDC:", usdcDeployment.address, "-", await usdc.name());
+    const mintAmount = parseUnits("10000", 6);
+    console.log("Minting USDC...");
+    await (await usdc.mint(deployer, mintAmount)).wait();
+    console.log("Số dư USDC của Deployer:", formatUnits(await usdc.balanceOf(deployer), 6));
+    const MockStrategyFactory = await ethers.getContractFactory("MockStrategy", signer);
+    const strategy1 = await MockStrategyFactory.deploy();
+    await strategy1.waitForDeployment();
+    await (await strategy1.initialize(
+      vaultFactoryDeployment.address,
+      deployer,
+      deployer,
+      usdcDeployment.address,
+      "Mock Strategy 1",
+      "MS1"
+    )).wait();
+    const strategy1Address = await strategy1.getAddress();
+    console.log("MockStrategy1 được triển khai tại:", strategy1Address);
+    const strategy2 = await MockStrategyFactory.deploy();
+    await strategy2.waitForDeployment();
+    await (await strategy2.initialize(
+      vaultFactoryDeployment.address,
+      deployer,
+      deployer,
+      usdcDeployment.address,
+      "Mock Strategy 2",
+      "MS2"
+    )).wait();
+    const strategy2Address = await strategy2.getAddress();
+    console.log("MockStrategy2 được triển khai tại:", strategy2Address);
+    const vaultParams = {
+      agentName: "TestPool",
+      asset: usdcDeployment.address,
+      tokenName: "Test Vault",
+      tokenSymbol: "TVT",
+      profitMaxUnlockTime: 7 * 24 * 60 * 60,
+      governance: deployer,
+    };
+    console.log("Đang tạo vault...");
+    const tx = await vaultFactory.createVault(vaultParams, { gasLimit: 3_000_000 });
+    const receipt = await tx.wait();
+    const vaultCreatedEvent = receipt.logs
+      .map((log) => {
+        try {
+          return vaultFactory.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find((log) => log?.name === "VaultCreated");
+    if (!vaultCreatedEvent) throw new Error("Sự kiện VaultCreated không tìm thấy");
     const newVaultAddress = vaultCreatedEvent.args.vault;
-    console.log("New vault created at:", newVaultAddress);
-    console.log("New vault poolId:", vaultCreatedEvent.args.poolId.toString());
-
-    const newVault = Vault__factory.connect(newVaultAddress, signer);
-    const strategyData = await newVault.strategies(strategyAddress);
-    if (strategyData.activation == 0) {
-      await vaultFactory.addStrategy(newVaultAddress, strategyAddress, true);
-      console.log(`Added strategy ${strategyAddress} to new vault`);
+    console.log("Vault được tạo tại:", newVaultAddress);
+    const vault = Vault__factory.connect(newVaultAddress, signer);
+    console.log("Đang thêm strategies...");
+    await (await vaultFactory.addStrategy(newVaultAddress, strategy1Address, true)).wait();
+    console.log("Đã thêm Mock Strategy 1:", strategy1Address);
+    await (await vaultFactory.addStrategy(newVaultAddress, strategy2Address, true)).wait();
+    console.log("Đã thêm Mock Strategy 2:", strategy2Address);
+    console.log("Đang kiểm tra tất cả vaults...");
+    const allVaults = await vaultFactory.listAllVaults();
+    console.log("Tất cả vaults:", allVaults);
+    console.log("Kiểm tra vault đầu tiên:", await vaultFactory.allVaults(0));
+    console.log("Xác minh vault:", await vaultFactory.isVault(newVaultAddress));
+    const depositAmount = parseUnits("1000", 6);
+    const balance = await usdc.balanceOf(deployer);
+    console.log("Số dư USDC của Deployer:", formatUnits(balance, 6));
+    if (balance >= depositAmount) {
+      console.log(`Đang phê duyệt ${formatUnits(depositAmount, 6)} USDC...`);
+      await (await usdc.approve(newVaultAddress, depositAmount)).wait();
+      console.log(`Đang nạp ${formatUnits(depositAmount, 6)} USDC...`);
+      await (await vault.deposit(depositAmount, deployer)).wait();
+      const vaultBal = await vault.balanceOf(deployer);
+      console.log("Số dư token vault:", formatUnits(vaultBal, 6));
     } else {
-      console.log(`Strategy ${strategyAddress} already active in new vault`);
+      console.warn("Không đủ USDC để nạp");
     }
-  //   const depositAmount = ethers.parseUnits("500", 6);
-  //   await usdc.mint(deployer, depositAmount);
-  //   await usdc.approve(newVaultAddress, depositAmount);
-  //   await newVault.deposit(depositAmount, deployer);
-  //   console.log(`Deposited ${ethers.formatUnits(depositAmount, 6)} USDC to new vault`);
-  //   const vaultBalance = await usdc.balanceOf(newVaultAddress);
-  //   console.log(`Vault USDC balance after deposit: ${ethers.formatUnits(vaultBalance, 6)} USDC`);
-  //   const investAmount = ethers.parseUnits("200", 6);
-  //   await vaultFactory.reBalanceDebt(newVaultAddress, strategyAddress, investAmount, 0n);
-  //   console.log(`Rebalanced debt: ${ethers.formatUnits(investAmount, 6)} USDC to strategy`);
-  //   const strategyBalance = await usdc.balanceOf(strategyAddress);
-  //   console.log(`Strategy USDC balance after reBalanceDebt: ${ethers.formatUnits(strategyBalance, 6)} USDC`);
-  //   const updatedStrategyData = await newVault.strategies(strategyAddress);
-  //   console.log("Strategy data after rebalance:", {
-  //     activation: updatedStrategyData.activation.toString(),
-  //     currentDebt: ethers.formatUnits(updatedStrategyData.currentDebt, 6),
-  //     maxDebt: ethers.formatUnits(updatedStrategyData.maxDebt, 6),
-  //   });
-  //   const initialTotalIdle = await strategy.totalIdle();
-  //   const initialTotalLocked = await strategy.totalLocked();
-  //   console.log("MockStrategy state before harvest:", {
-  //     totalIdle: ethers.formatUnits(initialTotalIdle, 6),
-  //     totalLocked: ethers.formatUnits(initialTotalLocked, 6),
-  //   });
-  //   try {
-  //     await strategy.connect(signer).harvest();
-  //     console.log("Harvest called to update totalIdle");
-  //   } catch (error) {
-  //     console.error("Harvest failed:", error.message);
-  //   }
-  //   const totalIdle = await strategy.totalIdle();
-  //   const totalLocked = await strategy.totalLocked();
-  //   console.log("MockStrategy state after harvest:", {
-  //     totalIdle: ethers.formatUnits(totalIdle, 6),
-  //     totalLocked: ethers.formatUnits(totalLocked, 6),
-  //   });
-  //   const profit = ethers.parseUnits("50", 6);
-  //   if ((await usdc.balanceOf(strategyAddress)) > profit) {
-  //     await strategy.connect(signer).lock(profit);
-  //     console.log(`Locked ${ethers.formatUnits(profit, 6)} USDC as simulated profit`);
-  //   } else {
-  //     console.log("Insufficient balance to lock profit");
-  //   }
-  //   const finalStrategyData = await newVault.strategies(strategyAddress);
-  //   console.log("Strategy data after lock:", {
-  //     activation: finalStrategyData.activation.toString(),
-  //     currentDebt: ethers.formatUnits(finalStrategyData.currentDebt, 6),
-  //     maxDebt: ethers.formatUnits(finalStrategyData.maxDebt, 6),
-  //   });
-  //   const finalTotalIdle = await strategy.totalIdle();
-  //   const finalTotalLocked = await strategy.totalLocked();
-  //   console.log("MockStrategy final state:", {
-  //     totalIdle: ethers.formatUnits(finalTotalIdle, 6),
-  //     totalLocked: ethers.formatUnits(finalTotalLocked, 6),
-  //   });
-  // } else {
-  //   console.error("Failed to create vault: VaultCreated event not found");
+    console.log("Đang tạo vault thứ hai...");
+    const vaultParams2 = {
+      ...vaultParams,
+      agentName: "TestPool2",
+      tokenName: "Test Vault 2",
+      tokenSymbol: "TVT2",
+    };
+    const tx2 = await vaultFactory.createVault(vaultParams2, { gasLimit: 3_000_000 });
+    const receipt2 = await tx2.wait();
+    const vaultCreatedEvent2 = receipt2.logs
+      .map((log) => {
+        try {
+          return vaultFactory.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find((log) => log?.name === "VaultCreated");
+    if (!vaultCreatedEvent2) throw new Error("Sự kiện VaultCreated không tìm thấy cho vault thứ hai");
+    const newVaultAddress2 = vaultCreatedEvent2.args.vault;
+    console.log("Vault thứ hai được tạo tại:", newVaultAddress2);
+    const vault2 = Vault__factory.connect(newVaultAddress2, signer);
+    console.log(`Đang phê duyệt ${formatUnits(depositAmount, 6)} USDC cho vault thứ hai...`);
+    await (await usdc.approve(newVaultAddress2, depositAmount)).wait();
+    console.log(`Đang nạp ${formatUnits(depositAmount, 6)} USDC vào vault thứ hai...`);
+    await (await vault2.deposit(depositAmount, deployer)).wait();
+    console.log("Số dư token vault thứ hai:", formatUnits(await vault2.balanceOf(deployer), 6));
+    console.log("Phê duyệt shares cho rebalance...");
+    const shares = await vault.convertToShares(depositAmount);
+    await (await vault.approve(vaultFactoryDeployment.address, shares)).wait();
+    const targetAmount = parseUnits("500", 6);
+    console.log(`Đang rebalance từ vault 1 sang vault 2 với target ${formatUnits(targetAmount, 6)} USDC...`);
+    await (await vaultFactory.rebalanceBetweenVaults(newVaultAddress, newVaultAddress2, targetAmount)).wait();
+    console.log("Rebalance hoàn tất");
+    console.log("Số dư vault 1 sau rebalance:", formatUnits(await vault.totalAssets(), 6));
+    console.log("Số dư vault 2 sau rebalance:", formatUnits(await vault2.totalAssets(), 6));
+  } catch (err) {
+    console.error("Lỗi:", err);
+    process.exit(1);
   }
 }
-
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("Error:", err);
-    process.exit(1);
-  });
+main().catch((err) => {
+  console.error("Lỗi:", err);
+  process.exit(1);
+});

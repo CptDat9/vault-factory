@@ -68,32 +68,21 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       DebtLogic: DebtLogicDeployment.address,
     },
   });
-  const factory = await deployments.get("VaultFactory");
-  await deploy("Vault", {
-    contract: "Vault",
-    from: deployer,
-    proxy: {
-      owner: deployer,
-      execute: {
-        init: {
-          methodName: "initialize",
-          args: [usdc.address, "LP Vault", "LP", timeUnlock, deployer, factory],
-        },
-      },
-    },
-    log: true,
-    autoMine: true,
-    libraries: {
-      ERC20Logic: ERC20LogicDeployment.address,
-      ERC4626Logic: ERC4626LogicDeployment.address,
-      InitializeLogic: InitializeLogicDeployment.address,
-      DepositLogic: DepositLogicDeployment.address,
-      WithdrawLogic: WithdrawLogicDeployment.address,
-      UnlockSharesLogic: UnlockSharesLogicDeployment.address,
-      DebtLogic: DebtLogicDeployment.address,
-      ConfiguratorLogic: ConfiguratorLogicDeployment.address,
-    },
-  });
+  // const factory = await deployments.get("VaultFactory");
+ await deploy("Vault", {
+  from: deployer,
+  log: true,
+  libraries: {
+    ERC20Logic: ERC20LogicDeployment.address,
+    ERC4626Logic: ERC4626LogicDeployment.address,
+    InitializeLogic: InitializeLogicDeployment.address,
+    DepositLogic: DepositLogicDeployment.address,
+    WithdrawLogic: WithdrawLogicDeployment.address,
+    UnlockSharesLogic: UnlockSharesLogicDeployment.address,
+    DebtLogic: DebtLogicDeployment.address,
+    ConfiguratorLogic: ConfiguratorLogicDeployment.address,
+  },
+});
 
   await execute("Vault", { from: deployer, log: true }, "grantRole", ROLES.ACCOUNTANT_MANAGER, deployer);
   await execute("Vault", { from: deployer, log: true }, "grantRole", ROLES.DEPOSIT_LIMIT_MANAGER, deployer);
