@@ -112,12 +112,12 @@ async function main() {
     const newVaultAddress2 = vaultCreatedEvent2.args.vault;
     console.log("Vault thứ hai được tạo tại:", newVaultAddress2);
     const vault2 = Vault__factory.connect(newVaultAddress2, signer);
-    console.log(`Đang phê duyệt ${formatUnits(depositAmount, 6)} USDC cho vault thứ hai...`);
+    console.log(`Đang Approvet ${formatUnits(depositAmount, 6)} USDC cho vault thứ hai...`);
     await (await usdc.approve(newVaultAddress2, depositAmount)).wait();
     console.log(`Đang nạp ${formatUnits(depositAmount, 6)} USDC vào vault thứ hai...`);
     await (await vault2.deposit(depositAmount, deployer)).wait();
     console.log("Số dư token vault thứ hai:", formatUnits(await vault2.balanceOf(deployer), 6));
-    console.log("Phê duyệt shares cho rebalance...");
+    console.log("Approve shares cho rebalance...");
     const shares = await vault.convertToShares(depositAmount);
     await (await vault.approve(vaultFactoryDeployment.address, shares)).wait();
     const targetAmount = parseUnits("500", 6);
