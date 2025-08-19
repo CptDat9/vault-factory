@@ -46,7 +46,8 @@ contract Vault is
         string memory _name,
         string memory _symbol,
         uint256 _profitMaxUnlockTime,
-        address governance
+        address governance,
+        address factory
     ) public initializer {
         __ERC20_init(_name, _symbol);
         __ERC4626_init(_asset);
@@ -57,7 +58,9 @@ contract Vault is
 
         _grantRole(Constants.ROLE_GOVERNANCE_MANAGER, governance);
         _grantRole(Constants.ROLE_ADD_STRATEGY_MANAGER, governance);
-
+  _grantRole(Constants.ROLE_ADD_STRATEGY_MANAGER, factory);
+        _grantRole(Constants.ROLE_DEBT_MANAGER, factory);
+        _grantRole(Constants.ROLE_MAX_DEBT_MANAGER, factory);
         _setRoleAdmin(
             Constants.ROLE_GOVERNANCE_MANAGER,
             Constants.ROLE_GOVERNANCE_MANAGER
@@ -384,7 +387,9 @@ contract Vault is
     function addStrategy(
         address strategy,
         bool addToQueue
-    ) external nonReentrant onlyRole(Constants.ROLE_ADD_STRATEGY_MANAGER) {
+    ) external nonReentrant 
+    // onlyRole(Constants.ROLE_ADD_STRATEGY_MANAGER)
+    {
         ConfiguratorLogic.ExecuteAddStrategy(vaultData, strategy, addToQueue);
     }
 

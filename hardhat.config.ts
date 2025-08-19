@@ -30,7 +30,15 @@ const config: HardhatUserConfig = {
       live: false,
       deploy: ["deploy/hardhat"],
     },
+      arbitrumFork: {
+      url: "http://178.128.27.189:8590", 
+      chainId: 0xa4b1, 
+      accounts,
+      gasPrice: 100e9,
+      deploy: ["deploy/hardhat"],
+    },
   },
+  
   solidity: {
     compilers: [
       {

@@ -68,7 +68,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       DebtLogic: DebtLogicDeployment.address,
     },
   });
-
+  const factory = await deployments.get("VaultFactory");
   await deploy("Vault", {
     contract: "Vault",
     from: deployer,
@@ -77,7 +77,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       execute: {
         init: {
           methodName: "initialize",
-          args: [usdc.address, "LP Vault", "LP", timeUnlock, deployer],
+          args: [usdc.address, "LP Vault", "LP", timeUnlock, deployer, factory],
         },
       },
     },
