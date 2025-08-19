@@ -2,7 +2,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers } from "hardhat";
-import { ROLES } from "../../utils/helper";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -73,24 +72,24 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // -------- Create Vault via VaultFactory --------
   const usdc = await deployments.get("USDC");
-  const VaultFactory = await ethers.getContractAt("VaultFactory", vaultFactory.address, await ethers.getSigner(deployer));
+  const vaultFactoryInstance = await ethers.getContractAt("VaultFactory", vaultFactory.address, await ethers.getSigner(deployer));
 
-  const tx = await VaultFactory.createVault({
+  const tx = await vaultFactoryInstance.createVault({
+    agentName: "KreAgent",
     asset: usdc.address,
     tokenName: "LP Vault",
     tokenSymbol: "LP",
     profitMaxUnlockTime: 7 * 24 * 60 * 60,
     governance: deployer,
-    poolId: 1,
-    initialStrategies: [],
   });
+
   const receipt = await tx.wait();
 
-  // Lấy event VaultCreated để biết địa chỉ vault
+  // Parse event VaultCreated
   const event = receipt.logs
     .map((log) => {
       try {
-        return VaultFactory.interface.parseLog(log);
+        return vaultFactoryInstance.interface.parseLog(log);
       } catch {
         return null;
       }
@@ -100,12 +99,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (!event) throw new Error("Không tìm thấy event VaultCreated");
   const vaultAddress = event.args.vault;
   log(`Vault created at: ${vaultAddress}`);
-
-  // // -------- Grant GOVERNANCE_ROLE cho VaultFactory --------
-  // const vault = await ethers.getContractAt("Vault", vaultAddress, await ethers.getSigner(deployer));
-  // const GOVERNANCE_ROLE = await vault.GOVERNANCE_ROLE();
-  // await (await vault.grantRole(GOVERNANCE_ROLE, vaultFactory.address)).wait();
-  // log(`Granted GOVERNANCE_ROLE to VaultFactory: ${vaultFactory.address}`);
 };
 
 deploy.tags = ["vaultFactory"];

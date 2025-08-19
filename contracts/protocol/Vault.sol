@@ -58,7 +58,7 @@ contract Vault is
 
         _grantRole(Constants.ROLE_GOVERNANCE_MANAGER, governance);
         _grantRole(Constants.ROLE_ADD_STRATEGY_MANAGER, governance);
-  _grantRole(Constants.ROLE_ADD_STRATEGY_MANAGER, factory);
+        _grantRole(Constants.ROLE_ADD_STRATEGY_MANAGER, factory);
         _grantRole(Constants.ROLE_DEBT_MANAGER, factory);
         _grantRole(Constants.ROLE_MAX_DEBT_MANAGER, factory);
         _setRoleAdmin(
@@ -387,8 +387,7 @@ contract Vault is
     function addStrategy(
         address strategy,
         bool addToQueue
-    ) external nonReentrant 
-    // onlyRole(Constants.ROLE_ADD_STRATEGY_MANAGER)
+    ) external nonReentrant // onlyRole(Constants.ROLE_ADD_STRATEGY_MANAGER)
     {
         ConfiguratorLogic.ExecuteAddStrategy(vaultData, strategy, addToQueue);
     }

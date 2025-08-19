@@ -56,37 +56,13 @@ contract VaultFactory is IVaultFactory, Ownable {
         vault = address(proxy);
         _allVaults.push(vault);
         _isVault[vault] = true;
-        for (uint256 i = 0; i < params.initialStrategies.length; i++) {
-            address strat = params.initialStrategies[i].strategy;
-            require(strat != address(0), "Invalid strategy");
-            Vault(vault).addStrategy(
-                strat,
-                params.initialStrategies[i].addToQueue
-            );
-            emit StrategyAdded(
-                vault,
-                strat,
-                params.initialStrategies[i].addToQueue
-            );
-        }
         emit VaultCreated(
-            params.poolId,
+            params.agentName,
             msg.sender,
             vault,
             address(params.asset)
         );
         return vault;
-    }
-
-    function reBalanceDebt(
-        address vault,
-        address strategy,
-        uint256 targetDebt,
-        uint256 maxLoss
-    ) external override onlyOwner {
-        require(_isVault[vault], "Not a valid vault");
-        Vault(vault).updateDebt(strategy, targetDebt, maxLoss);
-        emit Rebalanced(vault, strategy);
     }
 
     function addStrategy(
@@ -100,20 +76,11 @@ contract VaultFactory is IVaultFactory, Ownable {
         emit StrategyAdded(vault, strategy, addToQueue);
     }
 
-    function setMaxDebt(
-        address vault,
-        address strategy,
-        uint256 newMaxDebt
-    ) external override onlyOwner {
-        require(_isVault[vault], "Not a valid vault");
-        Vault(vault).updateMaxDebtForStrategy(strategy, newMaxDebt);
-    }
-
     function rebalanceBetweenVaults(
         address fromVault,
         address toVault,
-        uint256 targetDebt
-    ) external override onlyOwner {
+        uint256 target
+    ) external override {
         require(_isVault[fromVault] && _isVault[toVault], "Invalid vaults");
         require(fromVault != toVault, "Same vault");
         IERC20 asset = IERC20(Vault(fromVault).asset());
@@ -122,8 +89,13 @@ contract VaultFactory is IVaultFactory, Ownable {
             "Different assets"
         );
         uint256 currentAssets = Vault(fromVault).totalAssets();
-        require(currentAssets > targetDebt, "No excess to move");
-        uint256 amountToMove = currentAssets - targetDebt;
+        require(currentAssets > target, "No excess to move");
+        uint256 amountToMove = currentAssets - target;
+        uint256 shares = Vault(fromVault).convertToShares(amountToMove);
+        require(
+            Vault(fromVault).allowance(msg.sender, address(this)) >= shares,
+            "Insufficient allowance"
+        );
         uint256 withdrawn = Vault(fromVault).withdraw(
             amountToMove,
             address(this),

@@ -10,27 +10,35 @@ interface IVaultFactory {
         address strategy; // Địa chỉ của strategy
         bool addToQueue; // Có thêm vào default queue hay không
     }
-
+/* 
+    Hien tai dang dung struct de tao 1 vault OmniFarmingV2, 
+    co the can sua doi sau de rut gon params
+ */
+/* 
+    Struct AgentVaultParams{
+        IERC20 asset;
+        string name;
+        string symbol;
+        address agent; // vai tro owner, governances
+    }
+*/
     struct CreateVaultParams {
-        uint256 poolId;                // ID to map group/pool
+        string agentName;              // ID to map group/pool
         IERC20 asset;                  // Underlying asset
         string tokenName;              // ERC20 name of the vault
         string tokenSymbol;            // ERC20 symbol of the vault
         uint256 profitMaxUnlockTime;   // Max time to unlock profits
         address governance;            // Governance address for the vault
-        StrategyConfig[] initialStrategies; // Danh sách strategy ban đầu
     }
 
     // Events
     event VaultCreated(
-        uint256 indexed poolId,
+        string indexed agentName,
         address indexed creator,
         address vault,
         address asset
     );
-    event Rebalanced(address indexed vault, address strategy);
     event StrategyAdded(address indexed vault, address indexed strategy, bool addToQueue);
-    event MaxDebtSet(address indexed vault, address strategy, uint256 newMaxDebt);
     event VaultsRebalanced(address indexed fromVault, address indexed toVault, uint256 amount);
 
     // View Functions
@@ -41,16 +49,5 @@ interface IVaultFactory {
     // Functions
     function createVault(CreateVaultParams memory params) external returns (address vault);
     function addStrategy(address vault, address strategy, bool addToQueue) external;
-    function reBalanceDebt(
-        address vault,
-        address strategy,
-        uint256 targetDebt,
-        uint256 maxLoss
-    ) external;
-    function setMaxDebt(
-        address vault,
-        address strategy,
-        uint256 newMaxDebt
-    ) external;
     function rebalanceBetweenVaults(address fromVault, address toVault, uint256 targetDebt) external;
 }
