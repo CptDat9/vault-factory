@@ -10,18 +10,6 @@ interface IVaultFactory {
         address strategy; // Địa chỉ của strategy
         bool addToQueue; // Có thêm vào default queue hay không
     }
-/* 
-    Hien tai dang dung struct de tao 1 vault OmniFarmingV2, 
-    co the can sua doi sau de rut gon params
- */
-/* 
-    Struct AgentVaultParams{
-        IERC20 asset;
-        string name;
-        string symbol;
-        address agent; // vai tro owner, governances
-    }
-*/
     struct CreateVaultParams {
         string agentName;              // ID to map group/pool
         IERC20 asset;                  // Underlying asset
@@ -42,7 +30,7 @@ interface IVaultFactory {
     event VaultsRebalanced(address indexed fromVault, address indexed toVault, uint256 amount);
 
     // View Functions
-    function allVaults(uint256 index) external view returns (address vault);
+    function getVault(uint256 index) external view returns (address vault);
     function listAllVaults() external view returns (address[] memory);
     function isVault(address vault) external view returns (bool);
 

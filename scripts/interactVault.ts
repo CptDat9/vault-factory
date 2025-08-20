@@ -75,7 +75,7 @@ async function main() {
     console.log("Đang kiểm tra tất cả vaults...");
     const allVaults = await vaultFactory.listAllVaults();
     console.log("Tất cả vaults:", allVaults);
-    console.log("Kiểm tra vault đầu tiên:", await vaultFactory.allVaults(0));
+    console.log("Kiểm tra vault đầu tiên:", await vaultFactory.getVault(0));
     console.log("Xác minh vault:", await vaultFactory.isVault(newVaultAddress));
     const depositAmount = parseUnits("1000", 6);
     const balance = await usdc.balanceOf(deployer);

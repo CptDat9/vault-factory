@@ -23,7 +23,7 @@ contract VaultFactory is IVaultFactory, Ownable {
         vaultImplementation = _vaultImplementation;
     }
 
-    function allVaults(
+    function getVault(
         uint256 index
     ) external view override returns (address vault) {
         return _allVaults[index];
