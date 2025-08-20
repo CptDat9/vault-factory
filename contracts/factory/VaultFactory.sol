@@ -18,7 +18,7 @@ contract VaultFactory is IVaultFactory, Ownable {
     ) Ownable(initialOwner) {
         require(
             _vaultImplementation != address(0),
-            "Implementation khong hop le"
+            "Invalid Implementation"
         );
         vaultImplementation = _vaultImplementation;
     }
