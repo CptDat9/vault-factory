@@ -40,11 +40,31 @@ async function main() {
     if (!vaultCreatedEvent) throw new Error("Sự kiện VaultCreated không tìm thấy");
     const newVaultAddress = vaultCreatedEvent.args.vault;
     console.log("Vault được tạo tại:", newVaultAddress);
-    const vault = Vault__factory.connect(newVaultAddress, signer);
+    const vault = Vault__factory.connect(newVaultAddress, signer); // kết nối với 1 vault đã tạo
     await (await vaultFactory.addStrategy(newVaultAddress, strategy1Address, true)).wait();
     console.log("Đã thêm Strategy 1 (fluid):", strategy1Address);
     await (await vaultFactory.addStrategy(newVaultAddress, strategy2Address, true)).wait();
     console.log("Đã thêm Strategy 2 (morpho-gauntlet-usdc-core):", strategy2Address);
+    const vaultIndex = (await vaultFactory.listAllVaults()).length - 1;
+    const vaultParamsData = await vaultFactory.getVault(vaultIndex);
+    console.log("Agent Name:", vaultParamsData.agentName);
+    console.log("Asset:", vaultParamsData.asset);
+    console.log("Token Name:", vaultParamsData.tokenName);
+    console.log("Token Symbol:", vaultParamsData.tokenSymbol);
+    console.log("Profit Max Unlock Time:", vaultParamsData.profitMaxUnlockTime.toString());
+    console.log("Governance:", vaultParamsData.governance);
+    // Xem strategy
+    console.log("\n=== Danh sách Strategies của Vault ===");
+    const defaultQueue = await vault.getDefaultQueue();
+    console.log("Default Queue:", defaultQueue);
+    for (const strategyAddress of defaultQueue) {
+      const strategyData = await vault.strategies(strategyAddress);
+      console.log(`\nThông tin Strategy: ${strategyAddress}`);
+      console.log("  Active:", strategyData.activation);
+      console.log("  Last Report:", strategyData.lastReport.toString());
+      console.log("  Current Debt:", formatUnits(strategyData.currentDebt, 6), "USDC");
+      console.log("  Max Debt:", formatUnits(strategyData.maxDebt, 6), "USDC");
+    }
   } catch (err) {
     console.error("Lỗi:", err);
     process.exit(1);

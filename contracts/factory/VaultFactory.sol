@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract VaultFactory is IVaultFactory, Ownable {
     address[] private _allVaults;
     mapping(address => bool) private _isVault;
+    mapping (uint256 => CreateVaultParams) private _allVaultsParams;
     address public immutable vaultImplementation;
 
     constructor(
@@ -22,13 +23,22 @@ contract VaultFactory is IVaultFactory, Ownable {
         );
         vaultImplementation = _vaultImplementation;
     }
-
+    /* VIEW */
     function getVault(
         uint256 index
-    ) external view override returns (address vault) {
-        return _allVaults[index];
+    ) external view override returns (CreateVaultParams memory) {
+        require(index < _allVaults.length, "Index out of bounds");
+        return _allVaultsParams[index];
     }
-
+    
+    function listAllVaultsWithParams() external view returns (CreateVaultParams[] memory) {
+        CreateVaultParams[] memory params = new CreateVaultParams[](_allVaults.length);
+        for (uint256 i = 0; i < _allVaults.length; i++) {
+            params[i] = _allVaultsParams[i];
+        }
+        return params;
+    }
+    
     function listAllVaults() external view override returns (address[] memory) {
         return _allVaults;
     }
@@ -36,7 +46,7 @@ contract VaultFactory is IVaultFactory, Ownable {
     function isVault(address vault) external view override returns (bool) {
         return _isVault[vault];
     }
-
+    /* FUNCTIONS */
     function createVault(
         CreateVaultParams memory params
     ) external override returns (address vault) {
@@ -51,9 +61,16 @@ contract VaultFactory is IVaultFactory, Ownable {
             params.governance,
             address(this)
         );
-
         ERC1967Proxy proxy = new ERC1967Proxy(vaultImplementation, initData);
         vault = address(proxy);
+        _allVaultsParams[_allVaults.length] = CreateVaultParams({
+            agentName: params.agentName,
+            asset: params.asset,
+            tokenName: params.tokenName,
+            tokenSymbol: params.tokenSymbol,
+            profitMaxUnlockTime: params.profitMaxUnlockTime,
+            governance: params.governance
+        });
         _allVaults.push(vault);
         _isVault[vault] = true;
         emit VaultCreated(

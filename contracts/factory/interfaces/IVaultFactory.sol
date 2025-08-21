@@ -30,10 +30,10 @@ interface IVaultFactory {
     event VaultsRebalanced(address indexed fromVault, address indexed toVault, uint256 amount);
 
     // View Functions
-    function getVault(uint256 index) external view returns (address vault);
+    function getVault(uint256 index) external view returns (CreateVaultParams  memory);
     function listAllVaults() external view returns (address[] memory);
     function isVault(address vault) external view returns (bool);
-
+    function listAllVaultsWithParams() external view returns (CreateVaultParams[] memory);
     // Functions
     function createVault(CreateVaultParams memory params) external returns (address vault);
     function addStrategy(address vault, address strategy, bool addToQueue) external;

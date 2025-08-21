@@ -57,7 +57,6 @@ describe("VaultFactory", () => {
   });
 
   beforeEach(async () => {
-    // Tạo vault trước
     const vaultParams = {
       agentName: "PoolA",
       asset: await usdc.getAddress(),
@@ -66,10 +65,8 @@ describe("VaultFactory", () => {
       profitMaxUnlockTime: timeUnlock,
       governance: await governance.getAddress(),
     };
-
     const tx = await vaultFactory.createVault(vaultParams);
     const receipt = await tx.wait();
-
     const vaultEvent = receipt.logs
       .map((log) => {
         try {
@@ -83,14 +80,12 @@ describe("VaultFactory", () => {
     const vaultAddress = vaultEvent?.args.vault;
     expect(vaultAddress).to.not.be.undefined;
     vault = Vault__factory.connect(vaultAddress, governance);
-
-    // Sau khi có vault, khởi tạo strategy
     const MockStrategyFactory = await ethers.getContractFactory("MockStrategy", governance);
     strategy1 = (await MockStrategyFactory.deploy()) as MockStrategy;
     strategy2 = (await MockStrategyFactory.deploy()) as MockStrategy;
     const govAddr = await governance.getAddress();
     await strategy1.initialize(
-      vaultAddress, // Sử dụng vaultAddress đã có
+      vaultAddress,
       govAddr,
       govAddr,
       await usdc.getAddress(),
@@ -103,18 +98,48 @@ describe("VaultFactory", () => {
       govAddr,
       await usdc.getAddress(),
       "Strategy 2",
-      "STR2" // Sửa "STR" thành "STR2" để tránh trùng symbol
+      "STR2"
     );
-
-    // Mint và approve USDC cho vault
     await usdc.connect(governance).mint(alice.address, amount);
     await usdc.connect(alice).approve(vaultAddress, amount);
   });
 
-  it("should create a vault successfully", async () => {
+  it("should create a vault successfully and store params correctly", async () => {
     const vaults = await vaultFactory.listAllVaults();
     expect(vaults).to.include(await vault.getAddress());
     expect(await vaultFactory.isVault(await vault.getAddress())).to.be.true;
+    const vaultParams = await vaultFactory.getVault(0);
+    console.log("Vault Params:");
+    console.log("  Agent Name:", vaultParams.agentName);
+    console.log("  Asset:", vaultParams.asset);
+    console.log("  Token Name:", vaultParams.tokenName);
+    console.log("  Token Symbol:", vaultParams.tokenSymbol);
+    console.log("  Profit Max Unlock Time:", vaultParams.profitMaxUnlockTime.toString());
+    console.log("  Governance:", vaultParams.governance);
+  });
+
+  it("should return all vaults with params correctly", async () => {
+    const vaultParams2 = {
+      agentName: "PoolB",
+      asset: await usdc.getAddress(),
+      tokenName: "Test Vault 2",
+      tokenSymbol: "TVT2",
+      profitMaxUnlockTime: timeUnlock,
+      governance: await governance.getAddress(),
+    };
+    await vaultFactory.createVault(vaultParams2);
+
+    const allVaultsWithParams = await vaultFactory.listAllVaultsWithParams();
+    console.log("All Vaults with Params:");
+    allVaultsWithParams.forEach((params, index) => {
+      console.log(`Vault ${index + 1}:`);
+      console.log("  Agent Name:", params.agentName);
+      console.log("  Asset:", params.asset);
+      console.log("  Token Name:", params.tokenName);
+      console.log("  Token Symbol:", params.tokenSymbol);
+      console.log("  Profit Max Unlock Time:", params.profitMaxUnlockTime.toString());
+      console.log("  Governance:", params.governance);
+    });
   });
 
   it("should allow owner to add a strategy", async () => {
@@ -181,7 +206,6 @@ describe("VaultFactory", () => {
   });
 
   it("should revert rebalance if assets differ", async () => {
-    // deploy 1 token mới
     const ERC20MintableFactory = await ethers.getContractFactory("ERC20Mintable", governance);
     const otherToken = await ERC20MintableFactory.deploy("OtherToken", "OTH", 18);
     const vaultParams = {
